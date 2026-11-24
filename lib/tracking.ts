@@ -14,6 +14,32 @@ export function trackEvent(action: string, params?: Record<string, unknown>) {
   }
 }
 
+// Session-level message tracking (in-memory; resets on page refresh).
+let totalMessageCount = 0;
+let firstInputWordCount: number | null = null;
+let sessionEndReported = false;
+
+export function countWords(text: string): number {
+  return text.trim().split(/\s+/).filter(Boolean).length;
+}
+
+export function trackSendMessage(wordCount: number) {
+  totalMessageCount += 1;
+  if (firstInputWordCount === null) {
+    firstInputWordCount = wordCount;
+  }
+  trackEvent("send_message", { message_word_count: wordCount });
+}
+
+export function reportSessionEnd() {
+  if (sessionEndReported || totalMessageCount === 0) return;
+  sessionEndReported = true;
+  trackEvent("session_end", {
+    total_message_count: totalMessageCount,
+    first_input_word_count: firstInputWordCount ?? 0,
+  });
+}
+
 export function trackFirstVisit() {
   try {
     if (typeof window === "undefined") return;

@@ -23,8 +23,8 @@ export const siteConfig: SiteConfig = {
   ],
   defaultNextTheme: "system",
   icons: {
-    icon: "/favicon.ico",
-    shortcut: "/logo.png",
-    apple: "/logo.png",
+    icon: "/favicon.png",
+    shortcut: "/favicon.png",
+    apple: "/favicon.png",
   },
 };

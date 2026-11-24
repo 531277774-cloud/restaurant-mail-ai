@@ -48,7 +48,7 @@ export async function generateMetadata({
   const seoTitle =
     "Email Marketing for Restaurants | Restaurant Mail AI";
   const seoDescription =
-    "Create high-converting restaurant marketing emails with AI. Generate email subjects, preview text, body copy and HTML templates for your restaurant email marketing.";
+    "Free AI email generator for restaurants. Generate subjects, preview text, body copy and ready-to-use HTML email templates for your restaurant email marketing.";
 
   return {
     ...base,
@@ -59,6 +59,12 @@ export async function generateMetadata({
       title: seoTitle,
       description: seoDescription,
       siteName: "Restaurant Mail AI",
+      images: [
+        {
+          url: "https://restaurantmailai.com/restaurant-email-marketing-example.webp",
+          alt: "Restaurant Mail AI conversation and email generation preview",
+        },
+      ],
     },
     twitter: {
       ...(base.twitter || {}),

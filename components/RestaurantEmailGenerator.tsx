@@ -9,8 +9,13 @@ import {
   Smartphone,
   Sparkles,
 } from "lucide-react";
-import { useRef, useState } from "react";
-import { trackEvent } from "@/lib/tracking";
+import { useEffect, useRef, useState } from "react";
+import {
+  countWords,
+  reportSessionEnd,
+  trackEvent,
+  trackSendMessage,
+} from "@/lib/tracking";
 import { FAQ_ITEMS } from "@/config/seo";
 
 type FieldKey =
@@ -533,6 +538,14 @@ export default function RestaurantEmailGenerator() {
   const [answerText, setAnswerText] = useState("");
   const [questionError, setQuestionError] = useState("");
   const questionInputRef = useRef<HTMLInputElement>(null);
+  const lastGenerateClickRef = useRef(0);
+
+  // Report session_end once when the page is closed/unloaded.
+  useEffect(() => {
+    const handler = () => reportSessionEnd();
+    window.addEventListener("pagehide", handler);
+    return () => window.removeEventListener("pagehide", handler);
+  }, []);
   const [chatLog, setChatLog] = useState<ChatMessage[]>([]);
   const [email, setEmail] = useState<EmailResult | null>(null);
   const [viewMode, setViewMode] = useState<"desktop" | "mobile">("desktop");
@@ -553,7 +566,13 @@ export default function RestaurantEmailGenerator() {
     setError("");
     setStage("loading");
     setChatLog([{ role: "user", text }]);
-    trackEvent("email_generate");
+    // Debounce click_generate to avoid duplicate events on rapid clicks.
+    const now = Date.now();
+    if (now - lastGenerateClickRef.current > 2000) {
+      lastGenerateClickRef.current = now;
+      trackEvent("click_generate");
+    }
+    trackSendMessage(countWords(text));
 
     try {
       // Real LLM extraction when configured; falls back to mock otherwise.
@@ -607,6 +626,10 @@ export default function RestaurantEmailGenerator() {
       }
     }
     setQuestionError("");
+
+    if (value) {
+      trackSendMessage(countWords(value));
+    }
 
     // Capture an expiry date typed inside the offer answer (optional field).
     let nextCollected = { ...collected, [q.key]: value };
@@ -683,18 +706,22 @@ export default function RestaurantEmailGenerator() {
 
   const handleCopyPlain = async () => {
     if (!email) return;
-    trackEvent("email_copy", { type: "plain" });
-    await copyToClipboard(buildPlainText(email));
-    setCopiedPlain(true);
-    setTimeout(() => setCopiedPlain(false), 2000);
+    const ok = await copyToClipboard(buildPlainText(email));
+    if (ok) {
+      trackEvent("copy_text");
+      setCopiedPlain(true);
+      setTimeout(() => setCopiedPlain(false), 2000);
+    }
   };
 
   const handleCopyHtml = async () => {
     if (!email) return;
-    trackEvent("email_copy", { type: "html" });
-    await copyToClipboard(email.html || buildHtml(email));
-    setCopiedHtml(true);
-    setTimeout(() => setCopiedHtml(false), 2000);
+    const ok = await copyToClipboard(email.html || buildHtml(email));
+    if (ok) {
+      trackEvent("copy_html");
+      setCopiedHtml(true);
+      setTimeout(() => setCopiedHtml(false), 2000);
+    }
   };
 
   const handleFollowUp = async () => {
@@ -702,6 +729,7 @@ export default function RestaurantEmailGenerator() {
     if (!instruction || !email) return;
     setFollowUpText("");
     setChatLog((prev) => [...prev, { role: "user", text: instruction }]);
+    trackSendMessage(countWords(instruction));
     setIsRefining(true);
 
     try {
@@ -969,7 +997,7 @@ export default function RestaurantEmailGenerator() {
         </div>
       )}
 
-      <div className="mt-16 w-full max-w-3xl text-center">
+      <div className="mx-auto mt-16 w-full max-w-3xl text-center">
         <p className="text-base leading-relaxed text-slate-400 dark:text-slate-500">
           Our AI restaurant email marketing tool helps local restaurant owners
           create ready-to-send promotional emails. Generate subject lines,
@@ -977,6 +1005,18 @@ export default function RestaurantEmailGenerator() {
           Brevo and other email platforms. Build win-back offers, holiday
           announcements, menu launch emails and loyalty rewards in minutes.
         </p>
+      </div>
+
+      <div className="mx-auto mt-10 w-full max-w-3xl text-center">
+        <p className="mb-3 text-sm font-medium text-slate-500 dark:text-slate-400">
+          Example Output
+        </p>
+        <img
+          src="/restaurant-email-marketing-example.webp"
+          alt="Restaurant Mail AI conversation and email generation preview"
+          loading="lazy"
+          className="w-full rounded-2xl shadow-md ring-1 ring-slate-200 dark:ring-slate-700"
+        />
       </div>
 
       <div className="mt-20 w-full max-w-3xl border-t border-slate-200 pt-10 dark:border-slate-700">
